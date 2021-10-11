@@ -1,49 +1,41 @@
-package com.zgh.jg.plugin
+package com.dxtx.plugin
 
-import com.android.annotations.NonNull
 import com.android.build.api.transform.*
 import com.android.build.gradle.AppExtension
-import com.android.build.gradle.internal.pipeline.TransformManager
 import com.example.zghplugin.jg.JGClassVisitor
-import org.apache.commons.codec.digest.DigestUtils
+import com.example.zghplugin.jg.MethodInterceptorConfig
 import org.apache.commons.io.FileUtils
-import org.apache.commons.io.IOUtils
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.ClassWriter
-import org.objectweb.asm.tree.ClassNode
 
-import java.util.jar.JarEntry
-import java.util.jar.JarFile
-import java.util.jar.JarOutputStream
-import java.util.zip.ZipEntry
+import javax.annotation.Nonnull
 
-import static org.objectweb.asm.ClassReader.EXPAND_FRAMES
-
-class JGPlugin extends Transform implements Plugin<Project> {
+class interceptorPlugin extends Transform implements Plugin<Project> {
+    private static MethodInterceptorConfig config;
 
     @Override
     void apply(Project project) {
-        //registerTransform
         def android = project.extensions.getByType(AppExtension)
         android.registerTransform(this)
+        config = project.extensions.create("interceptor", MethodInterceptorConfig.class)
     }
 
     @Override
     String getName() {
-        return "ZGHPlugin"
+        return "interceptor"
     }
 
     @Override
     Set<QualifiedContent.ContentType> getInputTypes() {
-        return TransformManager.CONTENT_CLASS
+        return [QualifiedContent.DefaultContentType.CLASSES]
     }
 
     @Override
     Set<? super QualifiedContent.Scope> getScopes() {
-        return TransformManager.SCOPE_FULL_PROJECT
+        return [QualifiedContent.Scope.PROJECT]
     }
 
     @Override
@@ -52,11 +44,14 @@ class JGPlugin extends Transform implements Plugin<Project> {
     }
 
     @Override
-    void transform(@NonNull TransformInvocation transformInvocation) {
+    void transform(@Nonnull TransformInvocation transformInvocation) {
         println '--------------- LifecyclePlugin visit start --------------- '
         def startTime = System.currentTimeMillis()
         Collection<TransformInput> inputs = transformInvocation.inputs
         TransformOutputProvider outputProvider = transformInvocation.outputProvider
+
+        config.change();
+
         //删除之前的输出
         if (outputProvider != null)
             outputProvider.deleteAll()
@@ -67,11 +62,18 @@ class JGPlugin extends Transform implements Plugin<Project> {
                 handleDirectoryInput(directoryInput, outputProvider)
             }
 
-            //遍历jarInputs
-            input.jarInputs.each { JarInput jarInput ->
-                handleJarInputs(jarInput, outputProvider)
+            //遍历jarInputs,暂不处理jar
+//            input.jarInputs.each { JarInput jarInput ->
+//                handleJarInputs(jarInput, outputProvider)
+//            }
+            // jar文件，如第三方依赖
+            input.jarInputs.each { jarInput ->
+                def dest = transformInvocation.outputProvider.getContentLocation(jarInput.name,
+                        jarInput.contentTypes, jarInput.scopes, Format.JAR)
+                FileUtils.copyFile(jarInput.file, dest)
             }
         }
+
         def cost = (System.currentTimeMillis() - startTime) / 1000
         println '--------------- LifecyclePlugin visit end --------------- '
         println "LifecyclePlugin cost ： $cost s"
@@ -87,16 +89,11 @@ class JGPlugin extends Transform implements Plugin<Project> {
             directoryInput.file.eachFileRecurse { File file ->
                 def name = file.name
                 if (checkClassFile(file.getPath())) {
-                    println '----------- deal with "class" file <' + name + '> -----------'
-                    ClassReader classReader0 = new ClassReader(file.bytes)
-                    ClassNode classNode=new ClassNode();
-                    classReader0.accept(classNode,0);
-
-
+//                    println '----------- deal with "class" file <' + name + '> -----------'
                     ClassReader classReader = new ClassReader(file.bytes)
                     ClassWriter classWriter = new ClassWriter(classReader, ClassWriter.COMPUTE_MAXS)
-                    ClassVisitor cv = new JGClassVisitor(classReader,classWriter,classNode)
-                    classReader.accept(cv, EXPAND_FRAMES)
+                    ClassVisitor cv = new JGClassVisitor(classReader, classWriter, config)
+                    classReader.accept(cv, ClassReader.EXPAND_FRAMES)
                     byte[] code = classWriter.toByteArray()
                     FileOutputStream fos = new FileOutputStream(
                             file.parentFile.absolutePath + File.separator + name)
@@ -115,7 +112,7 @@ class JGPlugin extends Transform implements Plugin<Project> {
     /**
      * 处理Jar中的class文件
      */
-    static void handleJarInputs(JarInput jarInput, TransformOutputProvider outputProvider) {
+   /* static void handleJarInputs(JarInput jarInput, TransformOutputProvider outputProvider) {
         if (jarInput.file.getAbsolutePath().endsWith(".jar")) {
             //重名名输出文件,因为可能同名,会覆盖
             def jarName = jarInput.name
@@ -138,7 +135,7 @@ class JGPlugin extends Transform implements Plugin<Project> {
                 ZipEntry zipEntry = new ZipEntry(entryName)
                 InputStream inputStream = jarFile.getInputStream(jarEntry)
                 //插桩class
-                /*   if (checkClassFile(entryName)) {
+                *//*   if (checkClassFile(entryName)) {
                        //class文件处理
                        println '----------- deal with "jar" class file <' + entryName + '> -----------'
                        jarOutputStream.putNextEntry(zipEntry)
@@ -146,13 +143,13 @@ class JGPlugin extends Transform implements Plugin<Project> {
                        ClassWriter classWriter = new ClassWriter(classReader, ClassWriter.COMPUTE_MAXS)
                        ClassVisitor cv = new LifecycleClassVisitor(classWriter)
 
-                       classReader.accept(cv, EXPAND_FRAMES)
+                       classReader.accept(cv, ClassReader.EXPAND_FRAMES)
                        byte[] code = classWriter.toByteArray()
                        jarOutputStream.write(code)
                    } else {
                        jarOutputStream.putNextEntry(zipEntry)
                        jarOutputStream.write(IOUtils.toByteArray(inputStream))
-                   }*/
+                   }*//*
                 jarOutputStream.putNextEntry(zipEntry)
                 jarOutputStream.write(IOUtils.toByteArray(inputStream))
                 jarOutputStream.closeEntry()
@@ -165,7 +162,7 @@ class JGPlugin extends Transform implements Plugin<Project> {
             FileUtils.copyFile(tmpFile, dest)
             tmpFile.delete()
         }
-    }
+    }*/
 
     /**
      * 检查class文件是否需要处理
@@ -176,9 +173,17 @@ class JGPlugin extends Transform implements Plugin<Project> {
         if (!name.endsWith("class")) {
             return false;
         }
-        println '----------- check class file  > ' + name + ' < -----------'
+//        println 'check class file  --------> ' + name
+        for (String pkg : config.include) {
+            if(name.contains("LiveShowTabFragment")){
+                println 'check class file  --------> ' + name
+                println 'pkg  --------> ' + pkg
+                println 'result  --------> ' + name.contains(pkg)
+            }
+            if (name.contains(pkg)) return true
+        }
         //只处理需要的class文件
-        return (name.concat("MainActivity"))
+        return false
     }
 
 }

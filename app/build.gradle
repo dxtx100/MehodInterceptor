@@ -1,9 +1,16 @@
-
 plugins {
     id 'com.android.application'
 }
-apply plugin:"com.zgh.jg"
 
+//apply plugin: "com.dxtx.interceptor"
+//
+//interceptor {
+//    include = ["com.example.demo3.live"]
+//    handlers = [
+//            //处理注解,第一个参数为注解,第二个参数为处理注解的方法
+//            "com.lyinfotech.bw.live.permission.Permission": "com.lyinfotech.bw.live.permission.PermissionProxy"
+//    ]
+//}
 
 android {
     compileSdkVersion 30
@@ -38,7 +45,7 @@ dependencies {
 
 
     //asm
-    implementation 'org.ow2.asm:asm:5.0.3'
-    implementation 'org.ow2.asm:asm-commons:5.0.3'
+//    implementation 'org.ow2.asm:asm:5.0.3'
+//    implementation 'org.ow2.asm:asm-commons:5.0.3'
 }
 
