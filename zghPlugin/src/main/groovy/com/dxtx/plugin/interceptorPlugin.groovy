@@ -2,7 +2,9 @@ package com.dxtx.plugin
 
 import com.android.build.api.transform.*
 import com.android.build.gradle.AppExtension
+import com.example.zghplugin.jg.CreateChainTask
 import com.example.zghplugin.jg.JGClassVisitor
+import com.example.zghplugin.jg.Log
 import com.example.zghplugin.jg.MethodInterceptorConfig
 import org.apache.commons.io.FileUtils
 import org.gradle.api.Plugin
@@ -21,6 +23,13 @@ class interceptorPlugin extends Transform implements Plugin<Project> {
         def android = project.extensions.getByType(AppExtension)
         android.registerTransform(this)
         config = project.extensions.create("interceptor", MethodInterceptorConfig.class)
+
+        //提供一个自动生成类 Chain.java,,不再让app依赖jar
+        android.applicationVariants.all { variant ->
+            CreateChainTask task = project.tasks.create("create${variant.name.capitalize()}JavaTask",
+                    CreateChainTask.class)
+            variant.registerJavaGeneratingTask(task, new File(project.buildDir, "generated/intercept_chain_source_out"))
+        }
     }
 
     @Override
@@ -45,7 +54,7 @@ class interceptorPlugin extends Transform implements Plugin<Project> {
 
     @Override
     void transform(@Nonnull TransformInvocation transformInvocation) {
-        println '--------------- LifecyclePlugin visit start --------------- '
+        Log.d '--------------- interceptor plugin visit start --------------- '
         def startTime = System.currentTimeMillis()
         Collection<TransformInput> inputs = transformInvocation.inputs
         TransformOutputProvider outputProvider = transformInvocation.outputProvider
@@ -75,8 +84,8 @@ class interceptorPlugin extends Transform implements Plugin<Project> {
         }
 
         def cost = (System.currentTimeMillis() - startTime) / 1000
-        println '--------------- LifecyclePlugin visit end --------------- '
-        println "LifecyclePlugin cost ： $cost s"
+        Log.d '--------------- interceptor plugin visit end --------------- '
+        Log.d "interceptor plugin complie cost ： $cost s"
     }
 
     /**
@@ -89,7 +98,7 @@ class interceptorPlugin extends Transform implements Plugin<Project> {
             directoryInput.file.eachFileRecurse { File file ->
                 def name = file.name
                 if (checkClassFile(file.getPath())) {
-//                    println '----------- deal with "class" file <' + name + '> -----------'
+//                    Log.d '----------- deal with "class" file <' + name + '> -----------'
                     ClassReader classReader = new ClassReader(file.bytes)
                     ClassWriter classWriter = new ClassWriter(classReader, ClassWriter.COMPUTE_MAXS)
                     ClassVisitor cv = new JGClassVisitor(classReader, classWriter, config)
@@ -137,7 +146,7 @@ class interceptorPlugin extends Transform implements Plugin<Project> {
                 //插桩class
                 *//*   if (checkClassFile(entryName)) {
                        //class文件处理
-                       println '----------- deal with "jar" class file <' + entryName + '> -----------'
+                       Log.d '----------- deal with "jar" class file <' + entryName + '> -----------'
                        jarOutputStream.putNextEntry(zipEntry)
                        ClassReader classReader = new ClassReader(IOUtils.toByteArray(inputStream))
                        ClassWriter classWriter = new ClassWriter(classReader, ClassWriter.COMPUTE_MAXS)
@@ -173,13 +182,7 @@ class interceptorPlugin extends Transform implements Plugin<Project> {
         if (!name.endsWith("class")) {
             return false;
         }
-//        println 'check class file  --------> ' + name
         for (String pkg : config.include) {
-            if(name.contains("LiveShowTabFragment")){
-                println 'check class file  --------> ' + name
-                println 'pkg  --------> ' + pkg
-                println 'result  --------> ' + name.contains(pkg)
-            }
             if (name.contains(pkg)) return true
         }
         //只处理需要的class文件

@@ -17,7 +17,7 @@ import org.objectweb.asm.Type;
 public class JGClassVisitor extends ClassVisitor implements Opcodes {
 
     MethodInterceptorConfig config;
-    private boolean needHandle;
+    private boolean needHandle = true;
     int methodIndex = 0;
     private String className;
     private Type classType;
@@ -43,7 +43,6 @@ public class JGClassVisitor extends ClassVisitor implements Opcodes {
         }else {
             needHandle = true;
         }
-        needHandle = !config.anotationInClass || config.handlers.containsKey(desc);
         return super.visitAnnotation(desc, visible);
     }
 

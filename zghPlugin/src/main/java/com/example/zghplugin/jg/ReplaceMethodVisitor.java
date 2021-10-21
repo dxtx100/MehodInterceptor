@@ -24,7 +24,7 @@ public class ReplaceMethodVisitor extends MethodVisitor {
     public int access;
     public String desc, signature, name;
     public String[] exceptions;
-    ClassVisitor cv;
+    public ClassVisitor cv;
     public String className;
     public Type classType;
 
@@ -32,7 +32,7 @@ public class ReplaceMethodVisitor extends MethodVisitor {
     public String replaceMethodName;
     public MethodVisitor replaceMethodVisitor;
     private Type[] params;
-    int paramsCount = 0;
+    private int paramsCount = 0;
 
     public ReplaceMethodVisitor(int api, MethodVisitor mv, MethodInterceptorConfig config) {
         super(api, mv);
@@ -53,14 +53,11 @@ public class ReplaceMethodVisitor extends MethodVisitor {
 
     @Override
     public AnnotationVisitor visitAnnotation(String desc, boolean visible) {
-//        if (annotationVisitor != null) {
-//            //注解可能有多个~其中已有一个注解被解析了~现在解析第二个注解比如@Overried,这个无关紧要的~.
-//            return annotationVisitor;
-//        }
+        AnnotationVisitor av = super.visitAnnotation(desc, visible);
         if (config.handlers.containsKey(desc)) {
             Log.ddd("annotation " + desc);
             Log.ddd("method : " + className + " " + this.desc);
-            annotationVisitor = new JGAnnotationVisitor(super.visitAnnotation(desc, visible), config.handlers.get(desc));
+            annotationVisitor = new JGAnnotationVisitor(av, config.handlers.get(desc));
 
             //属性mv使用替换方法;在读取方法时,mv会写到新方法内..新方法是基本copy旧方法的
             mv = replaceMethodVisitor = cv.visitMethod(getReplaceAccess(), getReplaceName(desc), this.desc, signature, exceptions);
@@ -68,7 +65,7 @@ public class ReplaceMethodVisitor extends MethodVisitor {
             return annotationVisitor;
         } else {
 //            mv = originMV;
-            return super.visitAnnotation(desc, visible);
+            return av;
         }
     }
 
