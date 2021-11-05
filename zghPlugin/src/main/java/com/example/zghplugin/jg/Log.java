@@ -9,7 +9,7 @@ package com.example.zghplugin.jg;
  */
 public class Log {
 
-    private static final boolean enable = false;
+    private static final boolean enable = true;
 
     public static void d(String text) {
         if (enable) System.out.println(text);

@@ -49,7 +49,7 @@ public class ReplaceMethodVisitor extends MethodVisitor {
         Log.d("params count = " + paramsCount);
     }
 
-    JGAnnotationVisitor annotationVisitor;
+    private JGAnnotationVisitor annotationVisitor;
 
     @Override
     public AnnotationVisitor visitAnnotation(String desc, boolean visible) {
@@ -226,7 +226,6 @@ public class ReplaceMethodVisitor extends MethodVisitor {
             return info;
         }
     }
-
 
   /*  public void visitOriginCode(MethodVisitor mv) {
         final int i = methodArgNumber;

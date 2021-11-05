@@ -98,7 +98,8 @@ class interceptorPlugin extends Transform implements Plugin<Project> {
             directoryInput.file.eachFileRecurse { File file ->
                 def name = file.name
                 if (checkClassFile(file.getPath())) {
-//                    Log.d '----------- deal with "class" file <' + name + '> -----------'
+//                    Log.d '----------- deal with "class" file -----------'
+//                    Log.d name
                     ClassReader classReader = new ClassReader(file.bytes)
                     ClassWriter classWriter = new ClassWriter(classReader, ClassWriter.COMPUTE_MAXS)
                     ClassVisitor cv = new JGClassVisitor(classReader, classWriter, config)
@@ -183,7 +184,8 @@ class interceptorPlugin extends Transform implements Plugin<Project> {
             return false;
         }
         for (String pkg : config.include) {
-            if (name.contains(pkg)) return true
+            String _name = name.replaceAll("[/\\\\]",".")
+            if (_name.contains(pkg)) return true
         }
         //只处理需要的class文件
         return false

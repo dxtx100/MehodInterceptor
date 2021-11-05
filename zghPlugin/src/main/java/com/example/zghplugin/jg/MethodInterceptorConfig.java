@@ -28,9 +28,9 @@ public class MethodInterceptorConfig {
         Log.ddd("anotationInClass:" + anotationInClass);
         Set<String> processedInclude = new HashSet<>();
         for (String packName : include) {
-            String processedName = packName.replace(".", "\\");
-            Log.ddd("packName:" + processedName);
-            processedInclude.add(processedName);
+//            String processedName = packName.replace(".", "\\");
+            Log.ddd("packName:" + packName);
+            processedInclude.add(packName);
         }
         Map<String, String> pMap = new HashMap<>();
         for (String AnnotationName : handlers.keySet()) {
@@ -40,7 +40,7 @@ public class MethodInterceptorConfig {
             Log.ddd("\n");
             pMap.put(processedName, handlerName);
         }
-        this.include = processedInclude;
+//        this.include = processedInclude;
         this.handlers = pMap;
         doChange = true;
     }
